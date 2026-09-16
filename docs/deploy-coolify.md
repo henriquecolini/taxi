@@ -21,7 +21,17 @@ Use your real domain. You can add `http://localhost:3000` equivalents to the sam
 
 ## 3. Persistent storage
 
-Under **Persistent Storage**, add a volume mounted at **`/data`**. The database lives at `/data/taxi.db`. Without this volume, all data is lost on every redeploy.
+Under **Persistent Storage**, add a **Volume Mount**. The database lives at `/data/taxi.db`. Without this volume, all data is lost on every redeploy.
+
+- **Name**: e.g. `taxi-data`
+- **Source Path**: leave **empty**. Coolify then creates a Docker-managed volume, which inherits the image's `/data` ownership, so the non-root app user can write to it.
+- **Destination Path**: `/data`
+
+If you'd rather use a folder on the VM as the source (a bind mount), create it first and hand it to the container's user (uid 1001). Otherwise the app can't create the database:
+
+```
+sudo mkdir -p /data/coolify/taxi && sudo chown 1001:1001 /data/coolify/taxi
+```
 
 ## 4. Environment variables
 
