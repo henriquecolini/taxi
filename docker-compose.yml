@@ -1,0 +1,16 @@
+# Runs the production image locally: `docker compose up --build`
+# Reads secrets from .env.local (see .env.example). Data persists in the `taxi-data` volume.
+services:
+  taxi:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file: .env.local
+    environment:
+      DATABASE_PATH: /data/taxi.db
+    volumes:
+      - taxi-data:/data
+    restart: unless-stopped
+
+volumes:
+  taxi-data:
