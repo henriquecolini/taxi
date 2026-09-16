@@ -17,7 +17,7 @@ Use your real domain. You can add `http://localhost:3000` equivalents to the sam
 2. **Build pack: Dockerfile** (the file at the repository root).
 3. **Domains**: `https://taxi.colini.dev`. HTTPS is issued automatically.
 4. **Ports exposes**: `3000`.
-5. **Healthcheck**: path `/api/health`. The image also defines its own `HEALTHCHECK`.
+5. **Healthcheck**: leave Coolify's healthcheck **disabled**. The image has its own `HEALTHCHECK` (on `/api/health`), and Docker runs it automatically. Coolify's check needs `curl` or `wget`, which the image doesn't include.
 
 ## 3. Persistent storage
 
@@ -53,7 +53,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 ANTHROPIC_MODEL=claude-opus-5
 ```
 
-`DATABASE_PATH` already defaults to `/data/taxi.db` in the image. None of these are needed at build time.
+**Don't set `DATABASE_PATH`.** It already defaults to `/data/taxi.db` in the image. A relative value like `./data/taxi.db` (from `.env.example`) makes the app crash with `EACCES: permission denied, mkdir '/app/data'`. If you must set it, use exactly `/data/taxi.db`. None of these variables are needed at build time.
 
 ## 5. Resource limits
 
