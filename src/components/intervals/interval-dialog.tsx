@@ -1,8 +1,9 @@
 "use client";
 
 import { PlusIcon } from "lucide-react";
-import { useTimeZone, useTranslations } from "next-intl";
+import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useState } from "react";
+import { DateTimeInput } from "@/components/date-input";
 import { Field } from "@/components/projects/project-form";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,6 +42,7 @@ interface IntervalDialogProps {
 export function IntervalDialog({ projectId, defaultRate, interval, open, onOpenChange }: IntervalDialogProps) {
   const t = useTranslations("intervals");
   const timeZone = useTimeZone() ?? "UTC";
+  const locale = useLocale();
   const { pending, run } = useAction();
 
   const initial = () => {
@@ -50,14 +52,16 @@ export function IntervalDialog({ projectId, defaultRate, interval, open, onOpenC
       start: toDateTimeLocal(start, timeZone),
       end: toDateTimeLocal(end, timeZone),
       duration: "1:00",
-      rate: centsToInput(interval?.rate ?? defaultRate),
+      rate: centsToInput(interval?.rate ?? defaultRate, locale),
       note: interval?.note ?? "",
     };
   };
   const [mode, setMode] = useState<"end" | "duration">(interval ? "end" : "duration");
   const [values, setValues] = useState(initial);
+  const setValue = (key: keyof ReturnType<typeof initial>, value: string) =>
+    setValues((current) => ({ ...current, [key]: value }));
   const set = (key: keyof ReturnType<typeof initial>) => (event: React.ChangeEvent<HTMLInputElement>) =>
-    setValues((current) => ({ ...current, [key]: event.target.value }));
+    setValue(key, event.target.value);
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -84,7 +88,7 @@ export function IntervalDialog({ projectId, defaultRate, interval, open, onOpenC
           </DialogHeader>
 
           <Field label={t("start")} htmlFor="interval-start">
-            <Input id="interval-start" type="datetime-local" required value={values.start} onChange={set("start")} />
+            <DateTimeInput id="interval-start" required defaultValue={values.start} onChange={(value) => setValue("start", value)} />
           </Field>
 
           <div className="grid gap-3">
@@ -96,7 +100,7 @@ export function IntervalDialog({ projectId, defaultRate, interval, open, onOpenC
             </Tabs>
             {mode === "end" ? (
               <Field label={t("end")} htmlFor="interval-end">
-                <Input id="interval-end" type="datetime-local" required value={values.end} onChange={set("end")} />
+                <DateTimeInput id="interval-end" required defaultValue={values.end} onChange={(value) => setValue("end", value)} />
               </Field>
             ) : (
               <Field label={t("duration")} htmlFor="interval-duration" hint={t("durationHint")}>

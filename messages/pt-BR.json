@@ -325,5 +325,14 @@
     "backup": "Backup",
     "backupDescription": "Baixe uma cópia completa do banco de dados. Guarde em local seguro: ela contém todos os seus dados.",
     "downloadBackup": "Baixar backup"
+  },
+  "dateInput": {
+    "day": "dd",
+    "month": "mm",
+    "year": "aaaa",
+    "time": "Horário",
+    "timePlaceholder12": "hh:mm AM",
+    "timePlaceholder24": "hh:mm",
+    "openCalendar": "Abrir calendário"
   }
 }

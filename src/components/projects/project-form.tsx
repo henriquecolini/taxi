@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -32,6 +32,7 @@ interface ProjectFormProps {
 
 export function ProjectForm({ project, aiConfigured }: ProjectFormProps) {
   const t = useTranslations("projectForm");
+  const locale = useLocale();
   const { pending, run } = useAction();
   const router = useRouter();
   const [values, setValues] = useState<ProjectInput>({
@@ -39,7 +40,7 @@ export function ProjectForm({ project, aiConfigured }: ProjectFormProps) {
     clientName: project?.clientName ?? "",
     description: project?.description ?? "",
     currency: project?.currency ?? "BRL",
-    hourlyRate: project ? centsToInput(project.hourlyRate) : "",
+    hourlyRate: project ? centsToInput(project.hourlyRate, locale) : "",
     aiEnabled: project?.aiEnabled ?? false,
     aiLocale: project?.aiLocale ?? "en",
   });
@@ -110,7 +111,7 @@ export function ProjectForm({ project, aiConfigured }: ProjectFormProps) {
             id="hourlyRate"
             inputMode="decimal"
             required
-            placeholder="100.00"
+            placeholder={centsToInput(10000, locale)}
             value={values.hourlyRate}
             onChange={(e) => set("hourlyRate", e.target.value)}
           />

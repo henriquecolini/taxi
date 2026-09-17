@@ -9,9 +9,16 @@ export function formatMoney(cents: number, currency: string, locale: string): st
   return new Intl.NumberFormat(locale, { style: "currency", currency }).format(cents / 100);
 }
 
-/** Cents as a plain decimal string for form inputs, e.g. `8550` → `85.50`. */
-export function centsToInput(cents: number): string {
-  return (cents / 100).toFixed(2);
+/**
+ * Cents as a decimal string for form inputs, without thousands grouping:
+ * `8550` → `85,50` (pt-BR) or `85.50` (en). `parseMoney` reads both.
+ */
+export function centsToInput(cents: number, locale: string): string {
+  return new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+    useGrouping: false,
+  }).format(cents / 100);
 }
 
 /**
