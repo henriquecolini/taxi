@@ -7,6 +7,16 @@ import { periodBounds, type Period } from "@/lib/billing";
 import { toIsoDate, weekStartOf, type IsoDate } from "@/lib/time";
 import { timeZone } from "./periods";
 
+export function hasRepositories(projectId: string): boolean {
+  return (
+    getDb()
+      .select({ id: projectRepositories.id })
+      .from(projectRepositories)
+      .where(eq(projectRepositories.projectId, projectId))
+      .get() !== undefined
+  );
+}
+
 export interface CommitDto {
   sha: string;
   title: string;

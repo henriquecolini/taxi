@@ -33,6 +33,11 @@ export interface GitLabCommit {
   stats?: { additions: number; deletions: number; total: number };
 }
 
+export interface GitLabBranch {
+  name: string;
+  commit: { id: string; committed_date: string };
+}
+
 export interface GitLabDiff {
   old_path: string;
   new_path: string;
@@ -82,23 +87,23 @@ export function getProject(path: string): Promise<GitLabProject> {
   return getJson<GitLabProject>(`/projects/${encodeProject(path)}`);
 }
 
-/** Commits on all branches between two instants. */
-export function listCommits(projectId: number, since: Date, until: Date): Promise<GitLabCommit[]> {
+export function listBranches(projectId: number): Promise<GitLabBranch[]> {
+  return getAllPages<GitLabBranch>(`/projects/${projectId}/repository/branches`, {});
+}
+
+/**
+ * Commits reachable from one branch, committed between two instants.
+ *
+ * Note: GitLab filters `since`/`until` by *commit* date, and its `all=true`
+ * option silently misses commits, so callers list each branch instead.
+ */
+export function listBranchCommits(projectId: number, branch: string, since: Date, until: Date): Promise<GitLabCommit[]> {
   return getAllPages<GitLabCommit>(`/projects/${projectId}/repository/commits`, {
-    all: true,
+    ref_name: branch,
     with_stats: true,
     since: since.toISOString(),
     until: until.toISOString(),
   });
-}
-
-/** Names of the branches that contain a commit. */
-export async function getCommitBranches(projectId: number, sha: string): Promise<string[]> {
-  const refs = await getJson<{ type: string; name: string }[]>(
-    `/projects/${projectId}/repository/commits/${encodeURIComponent(sha)}/refs`,
-    { type: "branch", per_page: 100 },
-  );
-  return refs.map((ref) => ref.name);
 }
 
 export function getCommitDiff(projectId: number, sha: string): Promise<GitLabDiff[]> {

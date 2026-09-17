@@ -1,10 +1,10 @@
 import "server-only";
-import { and, eq } from "drizzle-orm";
+import { and, eq, gte, lt } from "drizzle-orm";
 import { getDb } from "@/db";
 import { gitlabCommits, projectRepositories } from "@/db/schema";
 import { env, isGitLabConfigured } from "@/env";
 import { periodBounds, type Period } from "@/lib/billing";
-import { getCommitBranches, getProject, listCommits, mapWithConcurrency } from "@/lib/gitlab";
+import { getProject, listBranchCommits, listBranches, mapWithConcurrency, type GitLabCommit } from "@/lib/gitlab";
 import { timeZone } from "./queries/periods";
 
 /** How far back to look when a period has no lower bound (no invoices yet). */
@@ -18,6 +18,16 @@ const inFlight = new Map<string, Promise<void>>();
  * Fetches commits of every repository of a project for a period and caches
  * their metadata (title, message, stats, branches). Concurrent calls for the
  * same project and period share one run.
+ *
+ * How it works, and why:
+ * - Each branch with activity since the period start is listed separately.
+ *   GitLab's `all=true` shortcut silently skips commits, and listing branches
+ *   also tells us which branches contain each commit, with no extra requests.
+ * - GitLab filters by commit date while reports group by authored date, so the
+ *   listing runs up to *now*: commits authored in the period but rebased or
+ *   amended later are still found.
+ * - Cached commits authored in the period that no branch contains anymore
+ *   (e.g. the pre-rebase copies) are removed, so reports don't show duplicates.
  */
 export function syncProjectCommits(projectId: string, period: Period): Promise<void> {
   const key = `${projectId}:${period.after}:${period.through}`;
@@ -43,8 +53,7 @@ async function doSync(projectId: string, period: Period): Promise<void> {
   const db = getDb();
   const now = Date.now();
   const { start, end } = periodBounds(period, timeZone());
-  const since = new Date(start ?? now - MAX_LOOKBACK_MS);
-  const until = new Date(Math.min(end, now));
+  const since = start ?? now - MAX_LOOKBACK_MS;
   const authors = env().GITLAB_AUTHOR_EMAILS;
 
   const repositories = db.select().from(projectRepositories).where(eq(projectRepositories.projectId, projectId)).all();
@@ -60,43 +69,58 @@ async function doSync(projectId: string, period: Period): Promise<void> {
         .run();
     }
 
-    const commits = (await listCommits(gitlabProjectId, since, until)).filter(
-      (commit) => authors.length === 0 || authors.includes(commit.author_email.toLowerCase()),
+    // A branch whose latest commit predates the period can't contain newer commits.
+    const branches = (await listBranches(gitlabProjectId)).filter(
+      (branch) => Date.parse(branch.commit.committed_date) >= since,
     );
+    const listings = await mapWithConcurrency(branches, 4, async (branch) => ({
+      branch: branch.name,
+      commits: await listBranchCommits(gitlabProjectId, branch.name, new Date(since), new Date(now)),
+    }));
 
-    const known = new Set(
-      db
-        .select({ sha: gitlabCommits.sha })
-        .from(gitlabCommits)
-        .where(eq(gitlabCommits.repositoryId, repository.id))
-        .all()
-        .map((row) => row.sha),
+    const found = new Map<string, { commit: GitLabCommit; branches: string[] }>();
+    for (const { branch, commits } of listings) {
+      for (const commit of commits) {
+        if (authors.length > 0 && !authors.includes(commit.author_email.toLowerCase())) continue;
+        const entry = found.get(commit.id) ?? { commit, branches: [] };
+        entry.branches.push(branch);
+        found.set(commit.id, entry);
+      }
+    }
+
+    const inPeriod = and(
+      eq(gitlabCommits.repositoryId, repository.id),
+      gte(gitlabCommits.authoredAt, since),
+      lt(gitlabCommits.authoredAt, Math.min(end, now)),
     );
-    const fresh = commits.filter((commit) => !known.has(commit.id));
-    const branches = await mapWithConcurrency(fresh, 5, (commit) => getCommitBranches(gitlabProjectId, commit.id));
 
     db.transaction((tx) => {
-      fresh.forEach((commit, index) => {
+      for (const { commit, branches: names } of found.values()) {
+        const values = {
+          title: commit.title,
+          message: commit.message,
+          authorName: commit.author_name,
+          authorEmail: commit.author_email.toLowerCase(),
+          authoredAt: Date.parse(commit.authored_date),
+          webUrl: commit.web_url,
+          additions: commit.stats?.additions ?? 0,
+          deletions: commit.stats?.deletions ?? 0,
+          branches: names.sort(),
+        };
         tx.insert(gitlabCommits)
-          .values({
-            repositoryId: repository.id,
-            sha: commit.id,
-            title: commit.title,
-            message: commit.message,
-            authorName: commit.author_name,
-            authorEmail: commit.author_email.toLowerCase(),
-            authoredAt: Date.parse(commit.authored_date),
-            webUrl: commit.web_url,
-            additions: commit.stats?.additions ?? 0,
-            deletions: commit.stats?.deletions ?? 0,
-            branches: branches[index],
-          })
-          .onConflictDoNothing()
+          .values({ repositoryId: repository.id, sha: commit.id, ...values })
+          .onConflictDoUpdate({ target: [gitlabCommits.repositoryId, gitlabCommits.sha], set: values })
           .run();
-      });
+      }
+
+      // Drop cached commits of this period that are no longer on any branch.
+      for (const { id, sha } of tx.select({ id: gitlabCommits.id, sha: gitlabCommits.sha }).from(gitlabCommits).where(inPeriod).all()) {
+        if (!found.has(sha)) tx.delete(gitlabCommits).where(eq(gitlabCommits.id, id)).run();
+      }
+
       tx.update(projectRepositories)
         .set({ lastSyncedAt: new Date(now) })
-        .where(and(eq(projectRepositories.id, repository.id), eq(projectRepositories.projectId, projectId)))
+        .where(eq(projectRepositories.id, repository.id))
         .run();
     });
   }

@@ -44,7 +44,7 @@ export default async function ActivityPage({ params, searchParams }: PageProps<"
     <div className="grid gap-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <PeriodSelect options={selection.options} selected={selection.invoiceId} />
-        {role === "owner" && isGitLabConfigured() ? <SyncButton projectId={project.id} /> : null}
+        {role === "owner" && isGitLabConfigured() ? <SyncButton projectId={project.id} invoiceId={selection.invoiceId} /> : null}
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { SyncButton } from "@/components/activity/sync-button";
 import { Button } from "@/components/ui/button";
 import { useAction } from "@/components/use-action";
 import { generateInvoiceSummaries } from "@/server/actions/ai";
@@ -26,10 +27,11 @@ interface ReportActionsProps {
   isOwner: boolean;
   canDelete: boolean;
   canGenerate: boolean;
+  canSync: boolean;
   hasSummaries: boolean;
 }
 
-export function ReportActions({ projectId, invoiceId, isOwner, canDelete, canGenerate, hasSummaries }: ReportActionsProps) {
+export function ReportActions({ projectId, invoiceId, isOwner, canDelete, canGenerate, canSync, hasSummaries }: ReportActionsProps) {
   const t = useTranslations("report");
   const { pending, run } = useAction();
   const router = useRouter();
@@ -51,6 +53,7 @@ export function ReportActions({ projectId, invoiceId, isOwner, canDelete, canGen
         </Link>
       </Button>
       <div className="flex flex-wrap gap-2">
+        {isOwner && canSync ? <SyncButton projectId={projectId} invoiceId={invoiceId} /> : null}
         {isOwner && canGenerate ? (
           <Button variant="outline" onClick={generate} disabled={pending}>
             <SparklesIcon className={pending ? "animate-pulse" : undefined} />

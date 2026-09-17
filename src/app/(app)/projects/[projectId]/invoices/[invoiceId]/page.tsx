@@ -9,11 +9,11 @@ import { ReportActions } from "@/components/invoices/report-actions";
 import { SummaryBlock } from "@/components/invoices/summary-block";
 import { ProjectLogo } from "@/components/projects/project-logo";
 import { Badge } from "@/components/ui/badge";
-import { isAiConfigured } from "@/env";
+import { isAiConfigured, isGitLabConfigured } from "@/env";
 import { requireProjectAccess } from "@/lib/authz";
 import { formatDuration, formatIsoDate, formatMoney, formatPeriodRange } from "@/lib/format";
 import { addIsoDays, msToHours } from "@/lib/time";
-import { groupCommitsByWeek, listCommitsInPeriod } from "@/server/queries/commits";
+import { groupCommitsByWeek, hasRepositories, listCommitsInPeriod } from "@/server/queries/commits";
 import { getInvoiceDetail } from "@/server/queries/invoices";
 import { timeZone } from "@/server/queries/periods";
 import { toProjectDto } from "@/server/queries/projects";
@@ -57,6 +57,7 @@ export default async function InvoiceReportPage({ params }: PageProps<"/projects
         isOwner={isOwner}
         canDelete={invoice.isLatest}
         canGenerate={isAiConfigured() && project.aiEnabled}
+        canSync={isGitLabConfigured() && hasRepositories(project.id)}
         hasSummaries={invoice.summaries.length > 0}
       />
 
