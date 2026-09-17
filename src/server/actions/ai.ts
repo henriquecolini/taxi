@@ -6,11 +6,10 @@ import { z } from "zod";
 import { getDb } from "@/db";
 import { gitlabCommits, invoices, invoiceSummaries, projectRepositories } from "@/db/schema";
 import { env, isAiConfigured, isGitLabConfigured } from "@/env";
-import { AiError, summarizePeriod, summarizeWeek, type CommitForSummary } from "@/lib/ai";
+import { AiError, summarizeInvoice, type CommitForSummary } from "@/lib/ai";
 import { requireProjectOwner } from "@/lib/authz";
 import { periodBounds, periodFor, summarize } from "@/lib/billing";
 import { periodStartDate } from "@/lib/format";
-import { mapWithConcurrency } from "@/lib/gitlab";
 import { toIsoDate, weekStartOf } from "@/lib/time";
 import { runAction, UserError } from "../action";
 import { syncProjectCommits } from "../gitlab-sync";
@@ -68,19 +67,14 @@ export async function generateInvoiceSummaries(projectId: string, invoiceId: str
     };
 
     try {
-      const weekly = await mapWithConcurrency([...weeks.entries()].sort(([a], [b]) => a.localeCompare(b)), 3, async ([weekStart, week]) => ({
-        weekStart,
-        ...(await summarizeWeek(projectContext, { weekStart, ...week })),
-      }));
-      const overall =
-        weekly.length > 0
-          ? await summarizePeriod(projectContext, {
-              from: periodStartDate(period),
-              through: period.through,
-              durationMs: summary.durationMs,
-              weeks: weekly,
-            })
-          : null;
+      const { overall, weeks: weekly } = await summarizeInvoice(projectContext, {
+        from: periodStartDate(period),
+        through: period.through,
+        durationMs: summary.durationMs,
+        weeks: [...weeks.entries()]
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([weekStart, week]) => ({ weekStart, ...week })),
+      });
 
       const model = env().ANTHROPIC_MODEL;
       db.transaction((tx) => {

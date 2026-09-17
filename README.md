@@ -7,7 +7,7 @@ Time tracking and invoicing for freelance work. It follows a spreadsheet workflo
 - **Invoices**: pick a date and everything started after the previous invoice, up to and including that date, is billed. Add fixed extras (e.g. operational costs). Reports show a weekly breakdown and print to PDF.
 - **Clients**: invite a client's Google account to a project. They get read-only access to its progress, charts and invoices.
 - **GitLab**: commit counts, branches and line stats per week.
-- **AI summaries**: Claude reads the period's commits and diffs and writes weekly and overall summaries. You can edit them.
+- **AI summaries**: Claude reads the period's commits and diffs and writes brief weekly and overall summaries in one request (about $0.10 per monthly invoice). You can edit them.
 - **Import**: bring in the old spreadsheet's time table and invoice dates from CSV.
 - English and Brazilian Portuguese; light and dark themes; works on mobile and desktop.
 
@@ -67,7 +67,7 @@ All configuration is through environment variables; see [`.env.example`](.env.ex
 | `GITLAB_URL`, `GITLAB_TOKEN` | no | Token needs only the `read_api` scope |
 | `GITLAB_AUTHOR_EMAILS` | no | Comma-separated; only these authors' commits are counted |
 | `ANTHROPIC_API_KEY` | no | Enables AI summaries |
-| `ANTHROPIC_MODEL` | no | Default `claude-opus-5` |
+| `ANTHROPIC_MODEL` | no | Default `claude-sonnet-5` (about $0.10 per monthly invoice) |
 
 ## How billing works
 

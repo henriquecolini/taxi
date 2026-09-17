@@ -47,7 +47,7 @@ const schema = z.object({
 
   /** Anthropic API key used for AI summaries. Optional. */
   ANTHROPIC_API_KEY: z.string().optional(),
-  ANTHROPIC_MODEL: z.string().default("claude-opus-5"),
+  ANTHROPIC_MODEL: z.string().default("claude-sonnet-5"),
 });
 
 export type Env = z.infer<typeof schema>;

@@ -50,7 +50,7 @@ GITLAB_URL=https://gitlab.com
 GITLAB_TOKEN=glpat-...            # read_api scope
 GITLAB_AUTHOR_EMAILS=you@example.com
 ANTHROPIC_API_KEY=sk-ant-...
-ANTHROPIC_MODEL=claude-opus-5
+ANTHROPIC_MODEL=claude-sonnet-5
 ```
 
 **Don't set `DATABASE_PATH`.** It already defaults to `/data/taxi.db` in the image. A relative value like `./data/taxi.db` (from `.env.example`) makes the app crash with `EACCES: permission denied, mkdir '/app/data'`. If you must set it, use exactly `/data/taxi.db`. None of these variables are needed at build time.
