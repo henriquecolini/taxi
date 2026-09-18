@@ -121,6 +121,8 @@ export const projects = sqliteTable("projects", {
   hourlyRate: integer().notNull().default(0),
   aiEnabled: integer({ mode: "boolean" }).notNull().default(false),
   aiLocale: text({ enum: AI_LOCALES }).notNull().default("en"),
+  /** Owner-picked end date (`YYYY-MM-DD`) of the open period's estimate; reset by each invoice. */
+  estimatedInvoiceDate: text(),
   archivedAt: integer({ mode: "timestamp_ms" }),
   createdAt: createdAt(),
   updatedAt: updatedAt(),

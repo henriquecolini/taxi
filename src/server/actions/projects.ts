@@ -9,8 +9,9 @@ import { isOwnerEmail, normalizeEmail } from "@/lib/access";
 import { requireOwner, requireProjectOwner } from "@/lib/authz";
 import { periodBounds } from "@/lib/billing";
 import { parseMoney } from "@/lib/money";
+import { isIsoDate } from "@/lib/time";
 import { runAction, UserError } from "../action";
-import { getOpenPeriod, timeZone } from "../queries/periods";
+import { getLatestInvoiceDate, getOpenPeriod, timeZone } from "../queries/periods";
 
 const projectInput = z.object({
   name: z.string().trim().min(1).max(100),
@@ -82,6 +83,20 @@ export async function updateProject(
       }
     });
 
+    revalidatePath("/", "layout");
+  });
+}
+
+/** Sets the estimated end of the open period, or `null` to use the default. */
+export async function setEstimatedInvoiceDate(projectId: string, rawDate: string | null) {
+  return runAction(async () => {
+    const { project } = await requireProjectOwner(z.string().parse(projectId));
+    const date = z.string().refine(isIsoDate).nullable().parse(rawDate);
+    const latestInvoiceDate = getLatestInvoiceDate(project.id);
+    if (date !== null && latestInvoiceDate !== null && date <= latestInvoiceDate) {
+      throw new UserError("invoiceDateNotAfterPrevious");
+    }
+    getDb().update(projects).set({ estimatedInvoiceDate: date }).where(eq(projects.id, project.id)).run();
     revalidatePath("/", "layout");
   });
 }

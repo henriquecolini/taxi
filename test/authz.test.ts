@@ -95,6 +95,7 @@ const mutations = (): [string, () => Promise<unknown>][] => [
   ["updateInterval", () => intervalActions.updateInterval(intervalA, { projectId: projectA, start: "2026-02-20T10:00", duration: "1:00", rate: "100" })],
   ["deleteInterval", () => intervalActions.deleteInterval(projectA, intervalA)],
   ["updateProject", () => projectActions.updateProject(projectA, { name: "Hacked", currency: "USD", hourlyRate: "1" })],
+  ["setEstimatedInvoiceDate", () => projectActions.setEstimatedInvoiceDate(projectA, "2026-12-31")],
   ["uploadLogo", () => projectActions.uploadLogo(projectA, new FormData())],
   ["removeLogo", () => projectActions.removeLogo(projectA)],
   ["setProjectArchived", () => projectActions.setProjectArchived(projectA, true)],
@@ -147,6 +148,7 @@ describe("clients", () => {
   it("nothing was changed by the rejected calls", () => {
     const project = getDb().select().from(schema.projects).all().find((p) => p.id === projectA)!;
     expect(project.name).toBe("Project A");
+    expect(project.estimatedInvoiceDate).toBeNull();
     expect(getDb().select().from(schema.projectMembers).all()).toHaveLength(1);
     expect(getDb().select().from(schema.intervals).all()).toHaveLength(2);
   });
@@ -181,6 +183,15 @@ describe("owner business rules", () => {
   it("only deletes the latest invoice", async () => {
     currentViewer = owner;
     await expect(invoiceActions.deleteInvoice(projectA, invoiceA)).resolves.toEqual({ ok: false, error: "invoiceNotLatest" });
+  });
+
+  it("only estimates invoice dates after the latest invoice", async () => {
+    currentViewer = owner;
+    await expect(projectActions.setEstimatedInvoiceDate(projectA, "2026-01-10")).resolves.toEqual({
+      ok: false,
+      error: "invoiceDateNotAfterPrevious",
+    });
+    await expect(projectActions.setEstimatedInvoiceDate(projectA, "not-a-date")).resolves.toEqual({ ok: false, error: "invalidInput" });
   });
 
   it("never invites the owner as a client", async () => {

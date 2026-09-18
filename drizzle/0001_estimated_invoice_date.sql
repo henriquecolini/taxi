@@ -1,0 +1,1 @@
+ALTER TABLE `projects` ADD `estimated_invoice_date` text;

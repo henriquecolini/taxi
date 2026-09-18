@@ -42,12 +42,22 @@ export function formatDateInput(date: IsoDate | "", locale: string): string {
   return order.map((part) => values[part]).join(separator);
 }
 
-/** Parses a typed date in the locale's order. Returns `null` when incomplete or invalid. */
-export function parseDateInput(text: string, locale: string): IsoDate | null {
+/**
+ * Parses a typed date in the locale's order. Returns `null` when incomplete or invalid.
+ * With `defaultYear`, a day and month alone (`19/10`) are accepted and get that year.
+ */
+export function parseDateInput(text: string, locale: string, defaultYear?: number): IsoDate | null {
   const { order } = datePattern(locale);
   const pieces = text.trim().split(/\D+/).filter(Boolean);
-  if (pieces.length !== 3) return null;
-  const values = Object.fromEntries(order.map((part, index) => [part, pieces[index]])) as Record<DatePart, string>;
+  const dayMonth = order.filter((part) => part !== "year");
+  let values: Record<DatePart, string>;
+  if (pieces.length === 3) {
+    values = Object.fromEntries(order.map((part, index) => [part, pieces[index]])) as Record<DatePart, string>;
+  } else if (pieces.length === 2 && defaultYear !== undefined) {
+    values = { ...Object.fromEntries(dayMonth.map((part, index) => [part, pieces[index]])), year: String(defaultYear) } as Record<DatePart, string>;
+  } else {
+    return null;
+  }
   if (values.year.length !== 4 || values.day.length > 2 || values.month.length > 2) return null;
   const iso = `${values.year}-${values.month.padStart(2, "0")}-${values.day.padStart(2, "0")}`;
   return isIsoDate(iso) ? iso : null;

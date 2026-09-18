@@ -11,6 +11,7 @@
  */
 import {
   addIsoDays,
+  isoDaysBetween,
   MS_PER_HOUR,
   startOfIsoDate,
   toIsoDate,
@@ -168,6 +169,48 @@ export function summarize(
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, day]) => ({ date, durationMs: day.durationMs, amount: Math.round(day.exact) })),
   };
+}
+
+/** Default length of a billing period, used to estimate when the next invoice is due. */
+export const ESTIMATE_PERIOD_DAYS = 30;
+
+export interface InvoiceEstimate {
+  /** Estimated invoice date (inclusive end of the open period). */
+  date: IsoDate;
+  /** Whether the owner picked the date instead of the default. */
+  custom: boolean;
+  /** Projected subtotal at that date, in cents. */
+  amount: number;
+}
+
+/**
+ * Projects the open period's subtotal to its estimated end, assuming work
+ * continues at the average amount per calendar day so far.
+ *
+ * The period starts the day after the latest invoice (or on the first worked
+ * day when there is none) and, by default, ends 30 days after that invoice.
+ * A date picked by the owner is used only while it is after the latest invoice.
+ */
+export function estimateInvoice(input: {
+  latestInvoiceDate: IsoDate | null;
+  /** First worked day of the open period, if any. */
+  firstWorkedDate: IsoDate | null;
+  today: IsoDate;
+  chosenDate: IsoDate | null;
+  /** Subtotal of the open period so far, in cents. */
+  subtotal: number;
+}): InvoiceEstimate {
+  const { latestInvoiceDate, today, chosenDate, subtotal } = input;
+  const start = latestInvoiceDate
+    ? addIsoDays(latestInvoiceDate, 1)
+    : [input.firstWorkedDate ?? today, today].sort()[0];
+  const custom = chosenDate !== null && (latestInvoiceDate === null || chosenDate > latestInvoiceDate);
+  const date = custom ? chosenDate : addIsoDays(start, ESTIMATE_PERIOD_DAYS - 1);
+
+  if (date <= today) return { date, custom, amount: subtotal };
+  const elapsedDays = isoDaysBetween(start, today) + 1;
+  const totalDays = isoDaysBetween(start, date) + 1;
+  return { date, custom, amount: Math.round((subtotal * totalDays) / elapsedDays) };
 }
 
 export type InvoiceDateError =

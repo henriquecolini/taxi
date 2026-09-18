@@ -4,16 +4,17 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { ColumnChart, CumulativeChart } from "@/components/charts/charts";
 import { StatTile } from "@/components/charts/stat-tile";
 import { IntervalList } from "@/components/intervals/interval-list";
+import { EstimateDateButton } from "@/components/projects/estimate-date-button";
 import { LiveBadge } from "@/components/timer/live-badge";
 import { TimerCard } from "@/components/timer/timer-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireProjectAccess } from "@/lib/authz";
-import { summarize } from "@/lib/billing";
-import { formatDuration, formatIsoDate, formatMoney, formatPeriodRange } from "@/lib/format";
+import { estimateInvoice, summarize } from "@/lib/billing";
+import { formatDuration, formatIsoDate, formatMoney, formatPeriodRange, periodStartDate } from "@/lib/format";
 import { groupCommitsByWeek, listCommitsInPeriod } from "@/server/queries/commits";
-import { getIntervalsInPeriod, getOpenPeriod, getRunningInterval, requestNow, timeZone } from "@/server/queries/periods";
+import { getIntervalsInPeriod, getOpenPeriod, getRunningInterval, requestNow, timeZone, todayIso } from "@/server/queries/periods";
 import { getTimerState } from "@/server/queries/projects";
 import { buildDailySeries } from "@/server/queries/reports";
 
@@ -31,6 +32,13 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
   const series = buildDailySeries(period, summary, project.currency, locale);
   const range = formatPeriodRange(period, locale);
   const daysWorked = summary.days.length;
+  const estimate = estimateInvoice({
+    latestInvoiceDate: period.after,
+    firstWorkedDate: summary.days[0]?.date ?? null,
+    today: todayIso(now),
+    chosenDate: project.estimatedInvoiceDate,
+    subtotal: summary.subtotal,
+  });
   const running = getRunningInterval();
   const money = (cents: number) => formatMoney(cents, project.currency, locale);
 
@@ -55,9 +63,26 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
         <p className="text-sm text-muted-foreground">{t("rate", { rate: money(project.hourlyRate) })}</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <StatTile label={t("hours")} value={<span className="tabular-nums">{formatDuration(summary.durationMs)}</span>} />
         <StatTile label={t("amount")} value={<span className="tabular-nums">{money(summary.subtotal)}</span>} />
+        <StatTile
+          label={t("estimatedAmount")}
+          value={<span className="tabular-nums">{money(estimate.amount)}</span>}
+          hint={
+            <span className="inline-flex items-center gap-1">
+              {t("estimateUntil", { date: formatIsoDate(estimate.date, locale) })}
+              {role === "owner" ? (
+                <EstimateDateButton
+                  projectId={project.id}
+                  date={estimate.date}
+                  custom={estimate.custom}
+                  min={periodStartDate(period) ?? undefined}
+                />
+              ) : null}
+            </span>
+          }
+        />
         <StatTile
           label={t("daysWorked")}
           value={daysWorked}

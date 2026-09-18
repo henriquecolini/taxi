@@ -4,7 +4,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getDb, type Db } from "@/db";
-import { invoiceItems, invoices, invoiceSummaries } from "@/db/schema";
+import { invoiceItems, invoices, invoiceSummaries, projects } from "@/db/schema";
 import { requireProjectOwner } from "@/lib/authz";
 import { periodFor, summarize, validateInvoiceDate, type Period, type PeriodSummary } from "@/lib/billing";
 import { parseMoney } from "@/lib/money";
@@ -110,6 +110,8 @@ export async function createInvoice(raw: z.input<typeof createInput>) {
           .values(items.map((item, position) => ({ ...item, invoiceId: invoice.id, position })))
           .run();
       }
+      // The estimate was for the period just invoiced.
+      tx.update(projects).set({ estimatedInvoiceDate: null }).where(eq(projects.id, project.id)).run();
       return invoice.id;
     });
     revalidatePath("/", "layout");
@@ -129,7 +131,10 @@ export async function deleteInvoice(projectId: string, invoiceId: string) {
       .orderBy(desc(invoices.date))
       .get();
     if (latest?.id !== invoice.id) throw new UserError("invoiceNotLatest");
-    getDb().delete(invoices).where(eq(invoices.id, invoice.id)).run();
+    getDb().transaction((tx) => {
+      tx.delete(invoices).where(eq(invoices.id, invoice.id)).run();
+      tx.update(projects).set({ estimatedInvoiceDate: null }).where(eq(projects.id, project.id)).run();
+    });
     revalidatePath("/", "layout");
   });
 }

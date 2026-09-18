@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  estimateInvoice,
   isDateInPeriod,
   isLocked,
   periodBounds,
@@ -148,5 +149,43 @@ describe("rangesOverlap", () => {
   it("treats ranges as half-open", () => {
     expect(rangesOverlap({ start: 0, end: 10 }, { start: 10, end: 20 })).toBe(false);
     expect(rangesOverlap({ start: 0, end: 11 }, { start: 10, end: 20 })).toBe(true);
+  });
+});
+
+describe("estimateInvoice", () => {
+  const base = { latestInvoiceDate: "2026-09-01", firstWorkedDate: "2026-09-02", chosenDate: null };
+
+  it("ends 30 days after the latest invoice by default", () => {
+    // 10 of 30 days elapsed (Sep 2–11): the amount so far is tripled.
+    expect(estimateInvoice({ ...base, today: "2026-09-11", subtotal: 100_000 })).toEqual({
+      date: "2026-10-01",
+      custom: false,
+      amount: 300_000,
+    });
+  });
+
+  it("uses the owner's date while it is after the latest invoice", () => {
+    expect(estimateInvoice({ ...base, today: "2026-09-11", chosenDate: "2026-09-20", subtotal: 100_000 })).toEqual({
+      date: "2026-09-20",
+      custom: true,
+      amount: 190_000,
+    });
+    expect(estimateInvoice({ ...base, today: "2026-09-11", chosenDate: "2026-09-01", subtotal: 100_000 })).toMatchObject({
+      date: "2026-10-01",
+      custom: false,
+    });
+  });
+
+  it("keeps the amount so far once the date has passed", () => {
+    expect(estimateInvoice({ ...base, today: "2026-10-05", subtotal: 100_000 }).amount).toBe(100_000);
+  });
+
+  it("starts on the first worked day before the first invoice", () => {
+    expect(
+      estimateInvoice({ latestInvoiceDate: null, firstWorkedDate: "2026-09-10", chosenDate: null, today: "2026-09-12", subtotal: 30_000 }),
+    ).toEqual({ date: "2026-10-09", custom: false, amount: 300_000 });
+    expect(
+      estimateInvoice({ latestInvoiceDate: null, firstWorkedDate: null, chosenDate: null, today: "2026-09-12", subtotal: 0 }),
+    ).toEqual({ date: "2026-10-11", custom: false, amount: 0 });
   });
 });

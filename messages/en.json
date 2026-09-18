@@ -92,6 +92,12 @@
     "rate": "Current rate: {rate}/h",
     "hours": "Hours",
     "amount": "Amount",
+    "estimatedAmount": "Estimated invoice amount",
+    "estimateUntil": "By {date}",
+    "editEstimateDate": "Change the estimated invoice date",
+    "estimateDate": "Estimated invoice date",
+    "estimateDateHint": "The amount is projected to this date at the current pace. Defaults to 30 days after the last invoice.",
+    "useDefaultDate": "Use default",
     "daysWorked": "Days worked",
     "averagePerDay": "{duration} per day",
     "commits": "Commits",
@@ -103,7 +109,8 @@
     "week": "Week",
     "weekOf": "Week of {date}",
     "recent": "Recent time",
-    "seeAll": "See all"
+    "seeAll": "See all",
+    "save": "Save"
   },
   "intervals": {
     "range": "{start} – {end}",

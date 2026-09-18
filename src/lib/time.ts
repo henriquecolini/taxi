@@ -39,6 +39,15 @@ export function addIsoDays(date: IsoDate, days: number): IsoDate {
   return format(addDays(new Date(y, m - 1, d), days), "yyyy-MM-dd");
 }
 
+/** Whole calendar days from `from` to `to` (negative when `to` is earlier). */
+export function isoDaysBetween(from: IsoDate, to: IsoDate): number {
+  const utc = (date: IsoDate) => {
+    const [y, m, d] = date.split("-").map(Number);
+    return Date.UTC(y, m - 1, d);
+  };
+  return Math.round((utc(to) - utc(from)) / 86_400_000);
+}
+
 /** Monday of the week containing `date`. */
 export function weekStartOf(date: IsoDate): IsoDate {
   const [y, m, d] = date.split("-").map(Number);

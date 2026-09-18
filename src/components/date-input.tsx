@@ -1,7 +1,7 @@
 "use client";
 
 import { CalendarIcon } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useState } from "react";
 import { enUS, ptBR } from "react-day-picker/locale";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ import {
   parseTimeInput,
   uses12HourClock,
 } from "@/lib/date-input";
-import { isIsoDate, type IsoDate } from "@/lib/time";
+import { isIsoDate, toIsoDate, type IsoDate } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
 /**
@@ -43,26 +43,35 @@ interface DateInputProps {
   defaultValue: IsoDate | "";
   /** Called with a valid date, or `""` while the text is incomplete or invalid. */
   onChange: (value: IsoDate | "") => void;
+  /** Earliest selectable date. */
+  min?: IsoDate;
   /** Latest selectable date. */
   max?: IsoDate;
   required?: boolean;
   className?: string;
 }
 
-export function DateInput({ id, defaultValue, onChange, max, required, className }: DateInputProps) {
+export function DateInput({ id, defaultValue, onChange, min, max, required, className }: DateInputProps) {
   const t = useTranslations("dateInput");
   const locale = useLocale();
+  const timeZone = useTimeZone() ?? "UTC";
   const [text, setText] = useState(() => formatDateInput(defaultValue, locale));
   const [open, setOpen] = useState(false);
+  const [focused, setFocused] = useState(false);
+  // A day and month alone (e.g. `19/10`) mean this year; the year is filled in on blur.
+  const [currentYear] = useState(() => Number(toIsoDate(Date.now(), timeZone).slice(0, 4)));
 
-  const value = parseDateInput(text, locale);
-  const outOfRange = value !== null && max !== undefined && value > max;
-  const invalid = text.length > 0 && (value === null || outOfRange) && text.replace(/\D/g, "").length >= 8;
+  const parse = (input: string) => parseDateInput(input, locale, currentYear);
+  const inRange = (date: IsoDate) => !(min && date < min) && !(max && date > max);
+
+  const value = parse(text);
+  const complete = !focused || text.replace(/\D/g, "").length >= 8;
+  const invalid = text.length > 0 && (value === null || !inRange(value)) && complete;
 
   function update(nextText: string) {
     setText(nextText);
-    const parsed = parseDateInput(nextText, locale);
-    onChange(parsed && !(max && parsed > max) ? parsed : "");
+    const parsed = parse(nextText);
+    onChange(parsed && inRange(parsed) ? parsed : "");
   }
 
   return (
@@ -76,6 +85,11 @@ export function DateInput({ id, defaultValue, onChange, max, required, className
         value={text}
         aria-invalid={invalid || undefined}
         onChange={(event) => update(maskDateInput(event.target.value, locale))}
+        onFocus={() => setFocused(true)}
+        onBlur={() => {
+          setFocused(false);
+          if (value) setText(formatDateInput(value, locale));
+        }}
         className="pr-9 tabular-nums"
       />
       <Popover open={open} onOpenChange={setOpen}>
@@ -95,8 +109,8 @@ export function DateInput({ id, defaultValue, onChange, max, required, className
             mode="single"
             locale={CALENDAR_LOCALES[locale as keyof typeof CALENDAR_LOCALES] ?? enUS}
             selected={value ? isoToLocalDate(value) : undefined}
-            defaultMonth={value ? isoToLocalDate(value) : max ? isoToLocalDate(max) : undefined}
-            disabled={max ? { after: isoToLocalDate(max) } : undefined}
+            defaultMonth={value ? isoToLocalDate(value) : max ? isoToLocalDate(max) : min ? isoToLocalDate(min) : undefined}
+            disabled={[...(min ? [{ before: isoToLocalDate(min) }] : []), ...(max ? [{ after: isoToLocalDate(max) }] : [])]}
             onSelect={(date) => {
               if (!date) return;
               update(formatDateInput(localDateToIso(date), locale));

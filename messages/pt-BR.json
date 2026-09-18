@@ -92,6 +92,12 @@
     "rate": "Valor atual: {rate}/h",
     "hours": "Horas",
     "amount": "Valor",
+    "estimatedAmount": "Valor estimado da fatura",
+    "estimateUntil": "Até {date}",
+    "editEstimateDate": "Alterar a data estimada da fatura",
+    "estimateDate": "Data estimada da fatura",
+    "estimateDateHint": "O valor é projetado até esta data no ritmo atual. O padrão é 30 dias após a última fatura.",
+    "useDefaultDate": "Usar padrão",
     "daysWorked": "Dias trabalhados",
     "averagePerDay": "{duration} por dia",
     "commits": "Commits",
@@ -103,7 +109,8 @@
     "week": "Semana",
     "weekOf": "Semana de {date}",
     "recent": "Horas recentes",
-    "seeAll": "Ver tudo"
+    "seeAll": "Ver tudo",
+    "save": "Salvar"
   },
   "intervals": {
     "range": "{start} – {end}",

@@ -25,6 +25,16 @@ describe("date inputs follow the app locale", () => {
     expect(parseDateInput("16/09/26", "pt-BR")).toBeNull();
   });
 
+  it("fills in the year when only the day and month are typed", () => {
+    expect(parseDateInput("19/10", "pt-BR", 2026)).toBe("2026-10-19");
+    expect(parseDateInput("10/19", "en", 2026)).toBe("2026-10-19");
+    expect(parseDateInput("19/10/2025", "pt-BR", 2026)).toBe("2025-10-19");
+    expect(parseDateInput("19/10", "pt-BR")).toBeNull();
+    expect(parseDateInput("10/19", "pt-BR", 2026)).toBeNull(); // month 19
+    expect(parseDateInput("29/02", "pt-BR", 2026)).toBeNull();
+    expect(parseDateInput("19", "pt-BR", 2026)).toBeNull();
+  });
+
   it("inserts separators while typing", () => {
     expect(maskDateInput("16", "pt-BR")).toBe("16");
     expect(maskDateInput("16/", "pt-BR")).toBe("16/");
