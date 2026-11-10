@@ -11,6 +11,7 @@ export type ErrorKey =
   | "invoiceDateInFuture"
   | "invoiceRunningTimer"
   | "invoiceNotLatest"
+  | "invoiceDateLocked"
   | "invoiceEmpty"
   | "memberIsOwner"
   | "memberExists"

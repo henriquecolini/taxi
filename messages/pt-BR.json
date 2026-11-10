@@ -35,6 +35,7 @@
     "invoiceDateInFuture": "A data não pode estar no futuro.",
     "invoiceRunningTimer": "Pare o cronômetro antes de faturar este período.",
     "invoiceNotLatest": "Somente a fatura mais recente pode ser excluída.",
+    "invoiceDateLocked": "Somente a data da fatura mais recente pode ser alterada.",
     "invoiceEmpty": "Não há nada para faturar neste período.",
     "memberIsOwner": "Essa é a sua própria conta.",
     "memberExists": "Esta pessoa já tem acesso.",
@@ -169,10 +170,15 @@
     "total": "Total",
     "intervalCount": "{count, plural, one {# registro} other {# registros}} · {duration}",
     "submit": "Criar fatura",
-    "lockNotice": "As horas cobertas pela fatura passam a ser somente leitura."
+    "lockNotice": "As horas cobertas pela fatura passam a ser somente leitura.",
+    "editTitle": "Editar fatura",
+    "editDescription": "Alterar o nome ou os valores adicionais atualiza o total. A data só pode ser alterada na fatura mais recente.",
+    "dateLockedHint": "Somente a data da fatura mais recente pode ser alterada.",
+    "save": "Salvar alterações"
   },
   "report": {
     "back": "Faturas",
+    "edit": "Editar",
     "print": "Imprimir / PDF",
     "downloadImage": "Baixar imagem",
     "generate": "Gerar resumo com IA",

@@ -10,7 +10,14 @@ import { periodFor, summarize, validateInvoiceDate, type Period, type PeriodSumm
 import { parseMoney } from "@/lib/money";
 import { isIsoDate, type IsoDate } from "@/lib/time";
 import { runAction, UserError } from "../action";
-import { getIntervalsInPeriod, getLatestInvoiceDate, getRunningInterval, timeZone, todayIso } from "../queries/periods";
+import {
+  getIntervalsInPeriod,
+  getLatestInvoiceDate,
+  getPreviousInvoiceDate,
+  getRunningInterval,
+  timeZone,
+  todayIso,
+} from "../queries/periods";
 
 const isoDate = z.string().refine(isIsoDate);
 
@@ -34,25 +41,26 @@ function parseItems(raw: z.input<typeof itemsInput>) {
 
 /**
  * Validates an invoice date for a project and computes its breakdown.
- * Shared by the live preview and invoice creation.
+ * Shared by the live preview, invoice creation and invoice edits.
+ * `previousDate` is the date of the invoice before this one (`null` for the first).
  */
 function computeInvoice(
   projectId: string,
   date: IsoDate,
   extras: { description: string; amount: number }[],
+  previousDate: IsoDate | null,
 ): { period: Period; summary: PeriodSummary } {
-  const latestInvoiceDate = getLatestInvoiceDate(projectId);
   const running = getRunningInterval();
   const error = validateInvoiceDate({
     date,
-    latestInvoiceDate,
+    latestInvoiceDate: previousDate,
     today: todayIso(),
     runningStartedAt: running?.projectId === projectId ? running.startedAt : null,
     timeZone: timeZone(),
   });
   if (error) throw new UserError(error);
 
-  const period = periodFor(latestInvoiceDate, date);
+  const period = periodFor(previousDate, date);
   const summary = summarize(getIntervalsInPeriod(projectId, period), {
     timeZone: timeZone(),
     now: Date.now(),
@@ -61,14 +69,21 @@ function computeInvoice(
   return { period, summary };
 }
 
+/** Previews a new invoice, or the edited version of `invoiceId` when given. */
 export async function previewInvoice(
   projectId: string,
   rawDate: string,
   rawItems: z.input<typeof itemsInput>,
+  invoiceId?: string,
 ) {
   return runAction(async () => {
     const { project } = await requireProjectOwner(z.string().parse(projectId));
-    return computeInvoice(project.id, isoDate.parse(rawDate), parseItems(rawItems));
+    const date = isoDate.parse(rawDate);
+    const items = parseItems(rawItems);
+    if (invoiceId === undefined) return computeInvoice(project.id, date, items, getLatestInvoiceDate(project.id));
+
+    const invoice = findInvoice(getDb(), project.id, z.string().parse(invoiceId));
+    return computeInvoice(project.id, date, items, getPreviousInvoiceDate(project.id, invoice.date));
   });
 }
 
@@ -79,6 +94,8 @@ const createInput = z.object({
   items: itemsInput,
 });
 
+const updateInput = createInput.omit({ projectId: true });
+
 /** Creates an invoice and returns its id. */
 export async function createInvoice(raw: z.input<typeof createInput>) {
   return runAction(async () => {
@@ -88,7 +105,7 @@ export async function createInvoice(raw: z.input<typeof createInput>) {
 
     const id = getDb().transaction((tx) => {
       // Recomputed inside the transaction so the snapshot matches what is locked.
-      const { summary } = computeInvoice(project.id, input.date, items);
+      const { summary } = computeInvoice(project.id, input.date, items, getLatestInvoiceDate(project.id));
       if (summary.intervalCount === 0 && items.length === 0) throw new UserError("invoiceEmpty");
 
       const [invoice] = tx
@@ -116,6 +133,49 @@ export async function createInvoice(raw: z.input<typeof createInput>) {
     });
     revalidatePath("/", "layout");
     return id;
+  });
+}
+
+/**
+ * Edits an invoice's name, additional values and, for the latest invoice only,
+ * its date. Moving the latest invoice's date changes which time it covers, so
+ * the totals are recomputed; earlier invoices keep their period because the
+ * next invoice's period starts at their date.
+ */
+export async function updateInvoice(projectId: string, invoiceId: string, raw: z.input<typeof updateInput>) {
+  return runAction(async () => {
+    const { project } = await requireProjectOwner(z.string().parse(projectId));
+    const input = updateInput.parse(raw);
+    const items = parseItems(input.items);
+
+    getDb().transaction((tx) => {
+      const invoice = findInvoice(getDb(), project.id, z.string().parse(invoiceId));
+      if (input.date !== invoice.date && getLatestInvoiceDate(project.id) !== invoice.date) {
+        throw new UserError("invoiceDateLocked");
+      }
+
+      const { summary } = computeInvoice(project.id, input.date, items, getPreviousInvoiceDate(project.id, invoice.date));
+      if (summary.intervalCount === 0 && items.length === 0) throw new UserError("invoiceEmpty");
+
+      tx.update(invoices)
+        .set({
+          date: input.date,
+          name: input.name,
+          durationMs: summary.durationMs,
+          subtotal: summary.subtotal,
+          extrasTotal: summary.extrasTotal,
+          total: summary.total,
+        })
+        .where(eq(invoices.id, invoice.id))
+        .run();
+      tx.delete(invoiceItems).where(eq(invoiceItems.invoiceId, invoice.id)).run();
+      if (items.length > 0) {
+        tx.insert(invoiceItems)
+          .values(items.map((item, position) => ({ ...item, invoiceId: invoice.id, position })))
+          .run();
+      }
+    });
+    revalidatePath("/", "layout");
   });
 }
 

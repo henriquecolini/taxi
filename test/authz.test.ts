@@ -106,6 +106,7 @@ const mutations = (): [string, () => Promise<unknown>][] => [
   ["removeRepository", () => projectActions.removeRepository(projectA, "any")],
   ["previewInvoice", () => invoiceActions.previewInvoice(projectA, "2026-02-01", [])],
   ["createInvoice", () => invoiceActions.createInvoice({ projectId: projectA, date: "2026-02-01", name: "x", items: [] })],
+  ["updateInvoice", () => invoiceActions.updateInvoice(projectA, invoiceA, { date: "2026-01-10", name: "pwned", items: [] })],
   ["deleteInvoice", () => invoiceActions.deleteInvoice(projectA, invoiceA)],
   ["saveInvoiceSummary", () => invoiceActions.saveInvoiceSummary(projectA, invoiceA, { scope: "overall", content: "pwned" })],
   ["importData", () => importActions.importData(projectA, { intervals: [], invoices: [] })],
@@ -178,6 +179,48 @@ describe("owner business rules", () => {
     expect(result.ok).toBe(true);
     const invoice = getDb().select().from(schema.invoices).all().find((row) => row.name === "February")!;
     expect(invoice).toMatchObject({ durationMs: 2 * HOUR, subtotal: 20000, extrasTotal: 5000, total: 25000 });
+  });
+
+  it("edits an invoice's name and additional values, recomputing the total", async () => {
+    currentViewer = owner;
+    const february = getDb().select().from(schema.invoices).all().find((row) => row.name === "February")!;
+    const result = await invoiceActions.updateInvoice(projectA, february.id, {
+      date: "2026-02-04",
+      name: "Feb",
+      items: [{ description: "Hosting", amount: "10" }, { description: "Ops", amount: "20" }],
+    });
+    expect(result.ok).toBe(true);
+    const row = getDb().select().from(schema.invoices).all().find((r) => r.id === february.id)!;
+    expect(row).toMatchObject({ name: "Feb", durationMs: 2 * HOUR, subtotal: 20000, extrasTotal: 3000, total: 23000 });
+    const items = getDb().select().from(schema.invoiceItems).all().filter((item) => item.invoiceId === february.id);
+    expect(items.sort((a, b) => a.position - b.position).map((item) => item.description)).toEqual(["Hosting", "Ops"]);
+  });
+
+  it("only moves the date of the latest invoice", async () => {
+    currentViewer = owner;
+    await expect(
+      invoiceActions.updateInvoice(projectA, invoiceA, { date: "2026-01-11", name: "January", items: [] }),
+    ).resolves.toEqual({ ok: false, error: "invoiceDateLocked" });
+    // Editing only the name of an earlier invoice is fine.
+    await expect(
+      invoiceActions.updateInvoice(projectA, invoiceA, { date: "2026-01-10", name: "Jan", items: [] }),
+    ).resolves.toMatchObject({ ok: true });
+  });
+
+  it("recomputes the totals when the latest invoice's date moves", async () => {
+    currentViewer = owner;
+    const find = () => getDb().select().from(schema.invoices).all().find((row) => row.name === "Feb")!;
+    const items = [{ description: "Ops", amount: "20" }];
+    // Feb 3 excludes the hours worked on Feb 4.
+    await expect(invoiceActions.updateInvoice(projectA, find().id, { date: "2026-02-03", name: "Feb", items })).resolves.toMatchObject({ ok: true });
+    expect(find()).toMatchObject({ date: "2026-02-03", durationMs: 0, subtotal: 0, total: 2000 });
+    await expect(invoiceActions.updateInvoice(projectA, find().id, { date: "2026-02-04", name: "Feb", items })).resolves.toMatchObject({ ok: true });
+    expect(find()).toMatchObject({ date: "2026-02-04", durationMs: 2 * HOUR, total: 22000 });
+    // The date must stay after the previous invoice.
+    await expect(invoiceActions.updateInvoice(projectA, find().id, { date: "2026-01-10", name: "Feb", items })).resolves.toEqual({
+      ok: false,
+      error: "invoiceDateNotAfterPrevious",
+    });
   });
 
   it("only deletes the latest invoice", async () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeftIcon, ImageDownIcon, PrinterIcon, SparklesIcon, Trash2Icon } from "lucide-react";
+import { ArrowLeftIcon, ImageDownIcon, PencilIcon, PrinterIcon, SparklesIcon, Trash2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -70,6 +70,14 @@ export function ReportActions({ projectId, invoiceId, isOwner, canDelete, canGen
           <PrinterIcon />
           {t("print")}
         </Button>
+        {isOwner ? (
+          <Button variant="outline" asChild>
+            <Link href={`/projects/${projectId}/invoices/${invoiceId}/edit`}>
+              <PencilIcon />
+              {t("edit")}
+            </Link>
+          </Button>
+        ) : null}
         {isOwner && canDelete ? (
           <AlertDialog>
             <AlertDialogTrigger asChild>

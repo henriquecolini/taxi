@@ -35,6 +35,7 @@
     "invoiceDateInFuture": "The date can't be in the future.",
     "invoiceRunningTimer": "Stop the running timer before invoicing this period.",
     "invoiceNotLatest": "Only the most recent invoice can be deleted.",
+    "invoiceDateLocked": "Only the most recent invoice's date can be changed.",
     "invoiceEmpty": "There is nothing to invoice in this period.",
     "memberIsOwner": "That's your own account.",
     "memberExists": "This person already has access.",
@@ -169,10 +170,15 @@
     "total": "Total",
     "intervalCount": "{count, plural, one {# time entry} other {# time entries}} · {duration}",
     "submit": "Create invoice",
-    "lockNotice": "Time covered by the invoice becomes read-only."
+    "lockNotice": "Time covered by the invoice becomes read-only.",
+    "editTitle": "Edit invoice",
+    "editDescription": "Changing the name or additional values updates the total. The date can only be changed on the most recent invoice.",
+    "dateLockedHint": "Only the most recent invoice's date can be changed.",
+    "save": "Save changes"
   },
   "report": {
     "back": "Invoices",
+    "edit": "Edit",
     "print": "Print / PDF",
     "downloadImage": "Download image",
     "generate": "Generate AI summary",

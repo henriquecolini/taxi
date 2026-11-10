@@ -14,7 +14,7 @@ import type { Period, PeriodSummary } from "@/lib/billing";
 import type { ErrorKey } from "@/lib/action-result";
 import { formatDuration, formatMoney, formatPeriodRange } from "@/lib/format";
 import { centsToInput } from "@/lib/money";
-import { createInvoice, previewInvoice } from "@/server/actions/invoices";
+import { createInvoice, previewInvoice, updateInvoice } from "@/server/actions/invoices";
 
 interface InvoiceFormProps {
   projectId: string;
@@ -22,9 +22,11 @@ interface InvoiceFormProps {
   today: string;
   defaultName: string;
   defaultItems: { description: string; amount: number }[];
+  /** Set when editing an existing invoice instead of creating one. */
+  invoice?: { id: string; date: string; /** Only the latest invoice's date can move. */ dateEditable: boolean };
 }
 
-export function InvoiceForm({ projectId, currency, today, defaultName, defaultItems }: InvoiceFormProps) {
+export function InvoiceForm({ projectId, currency, today, defaultName, defaultItems, invoice }: InvoiceFormProps) {
   const t = useTranslations("invoiceForm");
   const tErrors = useTranslations("errors");
   const locale = useLocale();
@@ -32,7 +34,7 @@ export function InvoiceForm({ projectId, currency, today, defaultName, defaultIt
   const router = useRouter();
   const [, startPreview] = useTransition();
 
-  const [date, setDate] = useState(today);
+  const [date, setDate] = useState(invoice?.date ?? today);
   const [name, setName] = useState(defaultName);
   const [items, setItems] = useState(
     defaultItems.map((item) => ({ description: item.description, amount: centsToInput(item.amount, locale) })),
@@ -47,19 +49,25 @@ export function InvoiceForm({ projectId, currency, today, defaultName, defaultIt
     if (!date) return;
     const id = window.setTimeout(() => {
       startPreview(async () => {
-        const result = await previewInvoice(projectId, date, complete);
+        const result = await previewInvoice(projectId, date, complete, invoice?.id);
         setPreview(result.ok ? result.data : null);
         setPreviewError(result.ok ? null : result.error);
       });
     }, 300);
     return () => window.clearTimeout(id);
-  }, [projectId, date, items]);
+  }, [projectId, invoice?.id, date, items]);
 
   const updateItem = (index: number, key: "description" | "amount", value: string) =>
     setItems((current) => current.map((item, i) => (i === index ? { ...item, [key]: value } : item)));
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
+    if (invoice) {
+      run(() => updateInvoice(projectId, invoice.id, { date, name, items }), {
+        onSuccess: () => router.push(`/projects/${projectId}/invoices/${invoice.id}`),
+      });
+      return;
+    }
     run(() => createInvoice({ projectId, date, name, items }), {
       onSuccess: (id) => router.push(`/projects/${projectId}/invoices/${id}`),
     });
@@ -73,8 +81,15 @@ export function InvoiceForm({ projectId, currency, today, defaultName, defaultIt
       <Card>
         <CardContent className="grid gap-5">
           <div className="grid gap-5 sm:grid-cols-[12rem_1fr]">
-            <Field label={t("date")} htmlFor="invoice-date" hint={t("dateHint")}>
-              <DateInput id="invoice-date" required max={today} defaultValue={date} onChange={setDate} />
+            <Field label={t("date")} htmlFor="invoice-date" hint={invoice && !invoice.dateEditable ? t("dateLockedHint") : t("dateHint")}>
+              <DateInput
+                id="invoice-date"
+                required
+                max={today}
+                defaultValue={date}
+                onChange={setDate}
+                disabled={invoice ? !invoice.dateEditable : false}
+              />
             </Field>
             <Field label={t("name")} htmlFor="invoice-name">
               <Input id="invoice-name" required maxLength={120} value={name} onChange={(e) => setName(e.target.value)} />
@@ -171,9 +186,9 @@ export function InvoiceForm({ projectId, currency, today, defaultName, defaultIt
             </>
           ) : null}
           <Button type="submit" size="lg" disabled={pending || !date || previewError !== null || preview === null}>
-            {t("submit")}
+            {invoice ? t("save") : t("submit")}
           </Button>
-          <p className="text-xs text-muted-foreground">{t("lockNotice")}</p>
+          {invoice ? null : <p className="text-xs text-muted-foreground">{t("lockNotice")}</p>}
         </CardContent>
       </Card>
     </form>

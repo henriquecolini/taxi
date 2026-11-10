@@ -48,10 +48,11 @@ interface DateInputProps {
   /** Latest selectable date. */
   max?: IsoDate;
   required?: boolean;
+  disabled?: boolean;
   className?: string;
 }
 
-export function DateInput({ id, defaultValue, onChange, min, max, required, className }: DateInputProps) {
+export function DateInput({ id, defaultValue, onChange, min, max, required, disabled, className }: DateInputProps) {
   const t = useTranslations("dateInput");
   const locale = useLocale();
   const timeZone = useTimeZone() ?? "UTC";
@@ -81,6 +82,7 @@ export function DateInput({ id, defaultValue, onChange, min, max, required, clas
         inputMode="numeric"
         autoComplete="off"
         required={required}
+        disabled={disabled}
         placeholder={datePlaceholder(locale, { day: t("day"), month: t("month"), year: t("year") })}
         value={text}
         aria-invalid={invalid || undefined}
@@ -98,6 +100,7 @@ export function DateInput({ id, defaultValue, onChange, min, max, required, clas
             type="button"
             variant="ghost"
             size="icon-sm"
+            disabled={disabled}
             className="absolute top-1/2 right-0.5 -translate-y-1/2 text-muted-foreground"
             aria-label={t("openCalendar")}
           >
