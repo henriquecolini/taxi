@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn, initials } from "@/lib/utils";
 
 interface ProjectLogoProps {
   name: string;
@@ -18,12 +18,6 @@ export function ProjectLogo({ name, logoUrl, className }: ProjectLogoProps) {
       />
     );
   }
-  const initials = name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => word[0]!.toUpperCase())
-    .join("");
   return (
     <span
       aria-hidden
@@ -32,7 +26,7 @@ export function ProjectLogo({ name, logoUrl, className }: ProjectLogoProps) {
         className,
       )}
     >
-      {initials}
+      {initials(name)}
     </span>
   );
 }

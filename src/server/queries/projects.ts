@@ -8,6 +8,17 @@ import type { Viewer } from "@/lib/session";
 import { startOfIsoDate } from "@/lib/time";
 import { getIntervalsInPeriod, getOpenPeriod, getRunningInterval, timeZone, todayIso } from "./periods";
 
+/** The project's logo as a `data:` URI, for rendering it into images. */
+export function getProjectLogoDataUri(projectId: string): string | null {
+  const row = getDb()
+    .select({ logo: projects.logo, logoMime: projects.logoMime })
+    .from(projects)
+    .where(eq(projects.id, projectId))
+    .get();
+  if (!row?.logo || !row.logoMime) return null;
+  return `data:${row.logoMime};base64,${row.logo.toString("base64")}`;
+}
+
 /** Minimal project data for headers, cards and client components. */
 export interface ProjectSummaryDto {
   id: string;

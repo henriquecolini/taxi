@@ -14,6 +14,10 @@ const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
   serverExternalPackages: ["better-sqlite3"],
+  // The invoice card reads its fonts from disk at runtime, which file tracing can't see.
+  outputFileTracingIncludes: {
+    "/api/projects/[projectId]/invoices/[invoiceId]/card": ["./assets/fonts/**"],
+  },
   experimental: {
     serverActions: {
       // Logo uploads (max 512 KB) and CSV imports.

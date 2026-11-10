@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeftIcon, PrinterIcon, SparklesIcon, Trash2Icon } from "lucide-react";
+import { ArrowLeftIcon, ImageDownIcon, PrinterIcon, SparklesIcon, Trash2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -60,6 +60,12 @@ export function ReportActions({ projectId, invoiceId, isOwner, canDelete, canGen
             {hasSummaries ? t("regenerate") : t("generate")}
           </Button>
         ) : null}
+        <Button variant="outline" asChild>
+          <a href={`/api/projects/${projectId}/invoices/${invoiceId}/card`} download>
+            <ImageDownIcon />
+            {t("downloadImage")}
+          </a>
+        </Button>
         <Button variant="outline" onClick={() => window.print()}>
           <PrinterIcon />
           {t("print")}

@@ -4,7 +4,7 @@ Time tracking and invoicing for freelance work. It follows a spreadsheet workflo
 
 - **Timer**: one-click start/stop with a live clock, today's total and a single running timer across all projects.
 - **Time entries**: add past time with an end time or a duration. Time covered by an invoice is locked.
-- **Invoices**: pick a date and everything started after the previous invoice, up to and including that date, is billed. Add fixed extras (e.g. operational costs). Reports show a weekly breakdown and print to PDF.
+- **Invoices**: pick a date and everything started after the previous invoice, up to and including that date, is billed. Add fixed extras (e.g. operational costs). Reports show a weekly breakdown and print to PDF. Each invoice can also be downloaded as a shareable PNG card with just the total, where it comes from and the period summary.
 - **Clients**: invite a client's Google account to a project. They get read-only access to its progress, charts and invoices.
 - **GitLab**: commit counts, branches and line stats per week.
 - **AI summaries**: Claude reads the period's commits and diffs and writes brief weekly and overall summaries in one request (about $0.10 per monthly invoice). You can edit them.
